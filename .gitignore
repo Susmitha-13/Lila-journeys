@@ -21,3 +21,10 @@ scripts/qa/
 
 # Vercel
 .vercel/
+
+# Submission artifacts (kept local, not deployed or pushed)
+SUBMISSION.html
+SUBMISSION.md
+SUBMISSION.pdf
+scripts/build_submission_pdf.py
+scripts/render_html_to_pdf.py
