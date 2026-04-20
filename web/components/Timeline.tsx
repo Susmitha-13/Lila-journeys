@@ -29,33 +29,54 @@ export default function Timeline({
 }: Props) {
   const rafRef = useRef<number | null>(null);
   const lastTsRef = useRef<number>(0);
+  // Keep latest time in a ref so the RAF loop can read/update it without
+  // resubscribing on every state change — the old code captured a stale
+  // currentTime in its closure, so playback only advanced by one frame.
+  const timeRef = useRef<number>(currentTime);
+  useEffect(() => {
+    timeRef.current = currentTime;
+  }, [currentTime]);
+  const speedRef = useRef<number>(playbackSpeed);
+  useEffect(() => {
+    speedRef.current = playbackSpeed;
+  }, [playbackSpeed]);
 
   // Animation loop
   useEffect(() => {
     if (!isPlaying) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      lastTsRef.current = 0;
       return;
+    }
+    // If user hit Play at the end, restart from 0
+    if (timeRef.current >= durationSec) {
+      timeRef.current = 0;
+      onTimeChange(0);
     }
     const step = (ts: number) => {
       const last = lastTsRef.current || ts;
       const dt = (ts - last) / 1000;
       lastTsRef.current = ts;
-      const next = currentTime + dt * playbackSpeed;
+      const next = timeRef.current + dt * speedRef.current;
       if (next >= durationSec) {
+        timeRef.current = durationSec;
         onTimeChange(durationSec);
         onPlayPause(); // stop at end
-      } else {
-        onTimeChange(next);
-        rafRef.current = requestAnimationFrame(step);
+        return;
       }
+      timeRef.current = next;
+      onTimeChange(next);
+      rafRef.current = requestAnimationFrame(step);
     };
     lastTsRef.current = 0;
     rafRef.current = requestAnimationFrame(step);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, playbackSpeed, durationSec]);
+  }, [isPlaying, durationSec]);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 border-t border-border bg-panel">

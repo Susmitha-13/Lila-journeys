@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import type { HeatmapMode, MapId, MatchIndexEntry } from "@/lib/types";
 import { formatDuration } from "@/lib/data";
 import { MAP_LABELS } from "@/lib/maps";
@@ -30,10 +31,15 @@ const MAPS: MapId[] = ["AmbroseValley", "GrandRift", "Lockdown"];
 const DATES = ["2026-02-10", "2026-02-11", "2026-02-12", "2026-02-13", "2026-02-14"];
 
 export default function FilterPanel(p: Props) {
+  const [search, setSearch] = useState("");
+  const [onlyWithBots, setOnlyWithBots] = useState(false);
+  const q = search.trim().toLowerCase();
   const filtered = p.matches.filter(
     (m) =>
       (p.selectedMap === "all" || m.mapId === p.selectedMap) &&
-      (p.selectedDate === "all" || m.date === p.selectedDate),
+      (p.selectedDate === "all" || m.date === p.selectedDate) &&
+      (!onlyWithBots || m.botCount > 0) &&
+      (q === "" || m.matchId.toLowerCase().includes(q)),
   );
 
   return (
@@ -101,8 +107,37 @@ export default function FilterPanel(p: Props) {
         )}
       </Section>
 
-      <Section title={`Matches (${filtered.length})`}>
-        <div className="space-y-1 max-h-[360px] overflow-y-auto pr-1">
+      <Section title={`Matches (${filtered.length}${onlyWithBots || q ? ` / ${p.matches.filter((m) => (p.selectedMap === "all" || m.mapId === p.selectedMap) && (p.selectedDate === "all" || m.date === p.selectedDate)).length}` : ""})`}>
+        <div className="mb-2 space-y-1.5">
+          <div className="relative">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search match id..."
+              className="w-full px-2.5 py-1.5 pr-6 text-xs font-mono bg-panel2 border border-border rounded focus:outline-none focus:border-accent text-text placeholder:text-muted"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch("")}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted hover:text-text text-sm leading-none"
+                aria-label="Clear search"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <label className="flex items-center gap-2 text-[11px] text-muted cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={onlyWithBots}
+              onChange={() => setOnlyWithBots((v) => !v)}
+              className="accent-accent w-3 h-3"
+            />
+            Only matches with bots
+          </label>
+        </div>
+        <div className="space-y-1 max-h-[320px] overflow-y-auto pr-1">
           {filtered.map((m) => {
             const selected = m.matchId === p.selectedMatchId;
             const combat =
